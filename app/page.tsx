@@ -11,12 +11,12 @@ export default function Home() {
         <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">MindFluent</h1>
           <div className="space-x-4">
-            <Button variant="ghost" className="text-white hover:text-white hover:bg-[#0056b3]">
+            <Button className="text-white hover:text-white hover:bg-[#0056b3]"><Link href="/login">
               Login
-            </Button>
-            <Button className="bg-[#28A745] hover:bg-[#218838] text-white">
+            </Link></Button>
+            <Button className="bg-[#28A745] hover:bg-[#218838] text-white"><Link href="/signup">
               Sign Up
-            </Button>
+            </Link></Button>
           </div>
         </nav>
         
@@ -25,9 +25,9 @@ export default function Home() {
           <p className="text-xl mb-12 max-w-2xl mx-auto">
             Experience AI-powered language learning with personalized lessons, voice recognition, and instant feedback.
           </p>
-          <Button className="bg-[#28A745] hover:bg-[#218838] text-white text-lg px-8 py-6">
+          <Button className="bg-[#28A745] hover:bg-[#218838] text-white text-lg px-8 py-6"><Link href="/login">
             Start Learning Now
-          </Button>
+            </Link></Button>
         </div>
       </header>
 
