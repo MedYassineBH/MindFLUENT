@@ -1,157 +1,110 @@
 "use client"
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Plus, BookOpen } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface FlashcardDeck {
+interface Flashcard {
   id: string;
-  name: string;
-  description: string;
-  language: string;
-  created_at: string;
+  front: string;
+  back: string;
+  example: string;
 }
 
-export default function Flashcards() {
-  const router = useRouter();
-  const [decks, setDecks] = useState<FlashcardDeck[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [newDeck, setNewDeck] = useState({ name: '', description: '', language: '' });
-  const [dialogOpen, setDialogOpen] = useState(false);
+export default function FlashcardsPage() {
+  const { user } = useAuth();
+  const [currentCardIndex, setCurrentCardIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
 
-  useEffect(() => {
-    fetchDecks();
-  }, []);
-
-  async function fetchDecks() {
-    try {
-      const { data, error } = await supabase
-        .from('flashcard_decks')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setDecks(data || []);
-    } catch (error) {
-      console.error('Error fetching decks:', error);
-    } finally {
-      setLoading(false);
+  const flashcards: Flashcard[] = [
+    {
+      id: '1',
+      front: 'Bonjour',
+      back: 'Hello',
+      example: 'Bonjour, comment allez-vous?'
+    },
+    {
+      id: '2',
+      front: 'Merci',
+      back: 'Thank you',
+      example: 'Merci beaucoup pour votre aide!'
+    },
+    {
+      id: '3',
+      front: 'Au revoir',
+      back: 'Goodbye',
+      example: 'Au revoir, à bientôt!'
+    },
+    {
+      id: '4',
+      front: 'Pomme',
+      back: 'Apple',
+      example: 'Je mange une pomme.'
+    },
+    {
+      id: '5',
+      front: 'Livre',
+      back: 'Book',
+      example: 'Ce livre est très intéressant.'
     }
-  }
+  ];
 
-  async function createDeck() {
-    try {
-      const { error } = await supabase
-        .from('flashcard_decks')
-        .insert([newDeck]);
+  const nextCard = () => {
+    setIsFlipped(false);
+    setCurrentCardIndex((prev) => (prev + 1) % flashcards.length);
+  };
 
-      if (error) throw error;
-      
-      setDialogOpen(false);
-      setNewDeck({ name: '', description: '', language: '' });
-      fetchDecks();
-    } catch (error) {
-      console.error('Error creating deck:', error);
-    }
+  const prevCard = () => {
+    setIsFlipped(false);
+    setCurrentCardIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
+  };
+
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold mb-4">Practice Flashcards</h1>
+        <p>Please log in to view your flashcards.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-2xl font-bold text-[#007BFF]">Flashcards</h1>
-              </div>
+    <div className="container mx-auto px-4 py-8">
+      <h2 className="text-2xl font-bold mb-4">Practice Flashcards</h2>
+      <Card className="flex flex-col items-center justify-center p-8">
+        <div
+          className={`w-full max-w-md aspect-[4/3] relative cursor-pointer transition-transform duration-500 transform-gpu ${
+            isFlipped ? 'rotate-y-180' : ''
+          }`}
+          onClick={() => setIsFlipped(!isFlipped)}
+        >
+          <div className={`absolute w-full h-full backface-hidden ${isFlipped ? 'rotate-y-180' : ''}`}>
+            <div className="bg-primary text-primary-foreground rounded-lg p-6 h-full flex flex-col justify-center items-center text-center">
+              <h3 className="text-2xl font-bold mb-4">{flashcards[currentCardIndex].front}</h3>
+              <p className="text-sm opacity-80">Click to flip</p>
             </div>
-            <div className="flex items-center">
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#28A745] hover:bg-[#218838]">
-                    <Plus className="h-5 w-5 mr-2" />
-                    New Deck
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Deck</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 mt-4">
-                    <div>
-                      <Label htmlFor="name">Deck Name</Label>
-                      <Input
-                        id="name"
-                        value={newDeck.name}
-                        onChange={(e) => setNewDeck({ ...newDeck, name: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Input
-                        id="description"
-                        value={newDeck.description}
-                        onChange={(e) => setNewDeck({ ...newDeck, description: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="language">Language</Label>
-                      <Input
-                        id="language"
-                        value={newDeck.language}
-                        onChange={(e) => setNewDeck({ ...newDeck, language: e.target.value })}
-                      />
-                    </div>
-                    <Button
-                      className="w-full bg-[#28A745] hover:bg-[#218838]"
-                      onClick={createDeck}
-                    >
-                      Create Deck
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+          </div>
+          <div className={`absolute w-full h-full backface-hidden ${!isFlipped ? 'rotate-y-180' : ''}`}>
+            <div className="bg-muted rounded-lg p-6 h-full flex flex-col justify-center items-center text-center">
+              <h3 className="text-2xl font-bold mb-4">{flashcards[currentCardIndex].back}</h3>
+              <p className="text-sm mb-4">{flashcards[currentCardIndex].example}</p>
+              <p className="text-sm opacity-80">Click to flip back</p>
             </div>
           </div>
         </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          {loading ? (
-            <div>Loading decks...</div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {decks.map((deck) => (
-                <Card
-                  key={deck.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer"
-                  onClick={() => router.push(`/flashcards/${deck.id}`)}
-                >
-                  <CardHeader>
-                    <div className="flex items-center space-x-4">
-                      <BookOpen className="h-8 w-8 text-[#007BFF]" />
-                      <div>
-                        <h3 className="text-xl font-semibold">{deck.name}</h3>
-                        <p className="text-sm text-gray-500">{deck.language}</p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-600">{deck.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
+        <div className="flex justify-between w-full max-w-md mt-8">
+          <Button variant="outline" onClick={prevCard}>
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            Previous
+          </Button>
+          <Button variant="outline" onClick={nextCard}>
+            Next
+            <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
         </div>
-      </main>
+      </Card>
     </div>
   );
 }

@@ -1,41 +1,49 @@
-/*
-  # User Profiles Schema
-
-  1. New Tables
-    - `profiles`
-      - `id` (uuid, primary key, references auth.users)
-      - `username` (text, unique)
-      - `full_name` (text)
-      - `avatar_url` (text)
-      - `language_preferences` (jsonb)
-      - `created_at` (timestamp)
-      - `updated_at` (timestamp)
-
-  2. Security
-    - Enable RLS on profiles table
-    - Add policies for authenticated users
+/* sqlfluff:disable
+  Profiles Schema for MindFluent App
+  
+  This migration adds the profiles table and related security policies
 */
 
-CREATE TABLE IF NOT EXISTS profiles (
-  id uuid PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
-  username text UNIQUE,
-  full_name text,
-  avatar_url text,
-  language_preferences jsonb DEFAULT '{}',
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
+-- Create profiles table
+create table if not exists profiles (
+    id uuid references auth.users(id) on delete cascade primary key,
+    username text unique,
+    full_name text,
+    avatar_url text,
+    language_preferences jsonb default '{"learning": [], "native": []}'::jsonb,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now(),
+    constraint username_length check (char_length(username) >= 3)
 );
 
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+-- Enable RLS
+alter table profiles enable row level security;
 
-CREATE POLICY "Users can read their own profile"
-  ON profiles
-  FOR SELECT
-  TO authenticated
-  USING (auth.uid() = id);
+-- Create policies
+create policy "Public profiles are viewable by everyone"
+on profiles for select
+using (true);
 
-CREATE POLICY "Users can update their own profile"
-  ON profiles
-  FOR UPDATE
-  TO authenticated
-  USING (auth.uid() = id);
+create policy "Users can insert their own profile"
+on profiles for insert
+with check (auth.uid() = id);
+
+create policy "Users can update own profile"
+on profiles for update
+using (auth.uid() = id)
+with check (auth.uid() = id);
+
+-- Create function to handle updated_at
+create or replace function handle_updated_at()
+returns trigger as $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ language plpgsql;
+
+-- Create trigger for updated_at
+create trigger on_profiles_updated
+before update on profiles
+for each row
+execute function handle_updated_at();

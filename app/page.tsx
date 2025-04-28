@@ -1,125 +1,107 @@
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Brain, BookOpen, MessageSquare, Trophy } from "lucide-react";
-import Link from "next/link";
+"use client"
+
+import { useState, useRef, useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
+import { Send, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
+import Link from "next/link"
+import { Brain, BookOpen, MessageSquare, Trophy } from "lucide-react"
+
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+interface Flashcard {
+  id: string
+  front: string
+  back: string
+  example: string
+}
 
 export default function Home() {
+  const { user } = useAuth();
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      
-      <header className="bg-[#007BFF] text-white">
-        <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">MindFluent</h1>
-          <div className="space-x-4">
-            <Button variant="ghost" className="text-white hover:text-white hover:bg-[#0056b3]">
-              Login
-            </Button>
-            <Button className="bg-[#28A745] hover:bg-[#218838] text-white">
-              Sign Up
-            </Button>
-          </div>
-        </nav>
-        
-        <div className="container mx-auto px-6 py-24 text-center">
-          <h2 className="text-5xl font-bold mb-8">Master Languages Naturally</h2>
-          <p className="text-xl mb-12 max-w-2xl mx-auto">
-            Experience AI-powered language learning with personalized lessons, voice recognition, and instant feedback.
-          </p>
-          <Button className="bg-[#28A745] hover:bg-[#218838] text-white text-lg px-8 py-6">
-            Start Learning Now
-          </Button>
-        </div>
-      </header>
+    <div className="container mx-auto px-4 py-8">
+      {/* Hero Section */}
+      <section className="mb-16 text-center">
+        <h1 className="mb-4 text-4xl font-bold">Bienvenue sur MindFluent</h1>
+        <p className="mb-8 text-xl text-muted-foreground">
+          Découvrez une nouvelle façon d'apprendre le français
+        </p>
+        {!user && (
+          <Link
+            href="/auth"
+            className="rounded-lg bg-primary px-6 py-3 text-primary-foreground hover:bg-primary/90"
+          >
+            Commencer
+          </Link>
+        )}
+      </section>
 
-      
-      <section className="py-24 container mx-auto px-6">
-        <h3 className="text-3xl font-bold text-center mb-16 text-gray-800">Why Choose MindFluent?</h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {[
-            {
-              icon: <Brain className="h-12 w-12 text-[#007BFF]" />,
-              title: "AI-Powered Learning",
-              description: "Personalized learning paths adapted to your progress"
-            },
-            {
-              icon: <MessageSquare className="h-12 w-12 text-[#007BFF]" />,
-              title: "Voice Recognition",
-              description: "Perfect your pronunciation with real-time feedback"
-            },
-            {
-              icon: <BookOpen className="h-12 w-12 text-[#007BFF]" />,
-              title: "Interactive Flashcards",
-              description: "Memorize vocabulary effectively with smart flashcards"
-            },
-            {
-              icon: <Trophy className="h-12 w-12 text-[#007BFF]" />,
-              title: "Progress Tracking",
-              description: "Monitor your improvement with detailed statistics"
-            }
-          ].map((feature, index) => (
-            <Card key={index} className="p-6 text-center hover:shadow-lg transition-shadow">
-              <div className="flex justify-center mb-4">{feature.icon}</div>
-              <h4 className="text-xl font-semibold mb-2 text-gray-800">{feature.title}</h4>
-              <p className="text-gray-600">{feature.description}</p>
-            </Card>
-          ))}
+      {/* Features Section */}
+      <section className="mb-16">
+        <h2 className="mb-8 text-center text-3xl font-bold">Fonctionnalités</h2>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <FeatureCard
+            title="Flashcards Intelligentes"
+            description="Apprenez avec des cartes mémoire adaptatives"
+          />
+          <FeatureCard
+            title="Quiz Interactifs"
+            description="Testez vos connaissances de manière ludique"
+          />
+          <FeatureCard
+            title="Prononciation"
+            description="Améliorez votre accent avec des exercices ciblés"
+          />
+          <FeatureCard
+            title="Grammaire"
+            description="Maîtrisez les règles essentielles"
+          />
+          <FeatureCard
+            title="Suivi de Progression"
+            description="Visualisez vos progrès en temps réel"
+          />
+          <FeatureCard
+            title="Apprentissage Personnalisé"
+            description="Un parcours adapté à votre niveau"
+          />
         </div>
       </section>
 
-      
-      <section className="bg-[#007BFF] text-white py-24">
-        <div className="container mx-auto px-6 text-center">
-          <h3 className="text-3xl font-bold mb-8">Ready to Start Your Language Journey?</h3>
-          <p className="text-xl mb-12 max-w-2xl mx-auto">
-            Join thousands of learners who are achieving their language goals with MindFluent.
-          </p>
-          <Button className="bg-[#28A745] hover:bg-[#218838] text-white text-lg px-8 py-6">
-            Get Started Free
-          </Button>
-        </div>
+      {/* CTA Section */}
+      <section className="mb-16 rounded-lg bg-muted p-8 text-center">
+        <h2 className="mb-4 text-2xl font-bold">Prêt à commencer ?</h2>
+        <p className="mb-8 text-muted-foreground">
+          Rejoignez des milliers d'apprenants et commencez votre voyage vers la
+          maîtrise du français.
+        </p>
+        <Link
+          href="/auth"
+          className="rounded-lg bg-primary px-6 py-3 text-primary-foreground hover:bg-primary/90"
+        >
+          S'inscrire gratuitement
+        </Link>
       </section>
-
-      
-      <footer className="bg-[#F8F9FA] py-12">
-        <div className="container mx-auto px-6">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <h4 className="font-bold text-lg mb-4">MindFluent</h4>
-              <p className="text-gray-600">Making language learning natural and effective.</p>
-            </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4">Features</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li>Voice Recognition</li>
-                <li>Grammar Correction</li>
-                <li>Flashcards</li>
-                <li>Progress Tracking</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4">Company</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li>About Us</li>
-                <li>Contact</li>
-                <li>Privacy Policy</li>
-                <li>Terms of Service</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold text-lg mb-4">Connect</h4>
-              <ul className="space-y-2 text-gray-600">
-                <li>Twitter</li>
-                <li>Facebook</li>
-                <li>Instagram</li>
-                <li>LinkedIn</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 mt-12 pt-8 text-center text-gray-600">
-            <p>© 2025 MindFluent. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
-  );
+  )
+}
+
+function FeatureCard({
+  title,
+  description,
+}: {
+  title: string
+  description: string
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-6 shadow-sm">
+      <h3 className="mb-2 text-xl font-semibold">{title}</h3>
+      <p className="text-muted-foreground">{description}</p>
+    </div>
+  )
 }

@@ -28,7 +28,7 @@ export default function Login() {
       });
 
       if (error) throw error;
-      router.push('/dashboard');
+      router.push('/profile');
     } catch (err: any) {
       setError(err.message);
     } finally {

@@ -1,0 +1,20 @@
+{
+    "sqltools.connections": [
+        {
+            "name": "Supabase PostgreSQL",
+            "driver": "PostgreSQL",
+            "previewLimit": 50
+        }
+    ],
+    "sql.linter.enable": true,
+    "sql.format.enable": true,
+    "sql.format.dialect": "postgresql",
+    "sqltools.useNodeRuntime": true,
+    "sqltools.format": {
+        "language": "postgresql",
+        "linesBetweenQueries": 2
+    },
+    "sqlfluff.dialect": "postgres",
+    "sqlfluff.executablePath": "sqlfluff",
+    "sqlfluff.linter.run": "onSave"
+} 

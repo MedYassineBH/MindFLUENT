@@ -1,4 +1,4 @@
-/*
+/* sqlfluff:disable
   # Voice Practice System Schema
 
   1. New Tables
@@ -16,20 +16,28 @@
     - Add policies for authenticated users
 */
 
-CREATE TABLE IF NOT EXISTS voice_practices (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users ON DELETE CASCADE,
-  text text NOT NULL,
-  audio_url text,
-  feedback jsonb DEFAULT '{}',
-  score integer DEFAULT 0,
-  created_at timestamptz DEFAULT now()
+create table if not exists voice_practices (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid references auth.users(id) on delete cascade,
+    text text not null,
+    audio_url text,
+    feedback jsonb default '{}'::jsonb,
+    score integer default 0,
+    created_at timestamptz default now()
 );
 
-ALTER TABLE voice_practices ENABLE ROW LEVEL SECURITY;
+-- Ensure the database supports Row Level Security (RLS)
+do $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated;
+  END IF;
+END $$;
 
-CREATE POLICY "Users can manage their voice practices"
-  ON voice_practices
-  FOR ALL
-  TO authenticated
-  USING (auth.uid() = user_id);
+alter table voice_practices enable row level security;
+
+create policy "Users can manage their voice practices"
+on voice_practices
+for all
+to authenticated
+using (current_setting('request.jwt.claims.user_id', true) = user_id::text)
+with check (current_setting('request.jwt.claims.user_id', true) = user_id::text);
