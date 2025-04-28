@@ -19,6 +19,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -30,26 +31,65 @@ export default function ChatPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
+    if (!input.trim() || isLoading || !user) return
 
     const userMessage = input.trim()
     setInput('')
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setIsLoading(true)
 
+    // Create a new abort controller for this request
+    abortControllerRef.current = new AbortController()
+
     try {
-      // Here you would typically call your AI API
-      // For now, we'll simulate a response
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: "I'm your AI language learning assistant. I can help you practice conversations, explain grammar concepts, and provide language learning tips. What would you like to know?"
-        }])
-        setIsLoading(false)
-      }, 1000)
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [...messages, { role: 'user', content: userMessage }],
+          userId: user.id
+        }),
+        signal: abortControllerRef.current.signal
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from AI')
+      }
+
+      // Create a new assistant message
+      setMessages(prev => [...prev, { role: 'assistant', content: '' }])
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+
+      if (!reader) throw new Error('No reader available')
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value)
+        setMessages(prev => {
+          const newMessages = [...prev]
+          const lastMessage = newMessages[newMessages.length - 1]
+          if (lastMessage.role === 'assistant') {
+            lastMessage.content += chunk
+          }
+          return newMessages
+        })
+      }
     } catch (error) {
-      toast.error('Failed to send message')
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('Request was aborted')
+      } else {
+        console.error('Error in chat:', error)
+        toast.error('Failed to send message')
+      }
+    } finally {
       setIsLoading(false)
+      abortControllerRef.current = null
     }
   }
 
@@ -103,9 +143,10 @@ export default function ChatPage() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
               className="flex-1"
+              disabled={isLoading}
             />
             <Button type="submit" disabled={isLoading}>
-              <Send className="w-4 h-4" />
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
         </form>

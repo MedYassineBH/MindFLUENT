@@ -122,7 +122,7 @@ export default function ProfilePage() {
       setIsLoading(true)
       await signOut()
       toast.success('Déconnexion réussie')
-      router.push('/login')
+      router.push('/')
     } catch (error) {
       console.error('Error during logout:', error)
       toast.error('Erreur lors de la déconnexion')
