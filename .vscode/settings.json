@@ -1,20 +1,42 @@
 {
-    "sqltools.connections": [
-        {
-            "name": "Supabase PostgreSQL",
-            "driver": "PostgreSQL",
-            "previewLimit": 50
-        }
-    ],
-    "sql.linter.enable": true,
-    "sql.format.enable": true,
-    "sql.format.dialect": "postgresql",
-    "sqltools.useNodeRuntime": true,
-    "sqltools.format": {
-        "language": "postgresql",
-        "linesBetweenQueries": 2
-    },
-    "sqlfluff.dialect": "postgres",
-    "sqlfluff.executablePath": "sqlfluff",
-    "sqlfluff.linter.run": "onSave"
-} 
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "deno.lint": true,
+  "deno.unstable": [
+    "bare-node-builtins",
+    "byonm",
+    "sloppy-imports",
+    "unsafe-proto",
+    "webgpu",
+    "broadcast-channel",
+    "worker-options",
+    "cron",
+    "kv",
+    "ffi",
+    "fs",
+    "http",
+    "net"
+  ],
+  "sql.format.dialect": "postgresql",
+  "sql.format.enable": true,
+  "sql.linter.enable": true,
+  "sqlfluff.dialect": "postgres",
+  "sqlfluff.executablePath": "sqlfluff",
+  "sqlfluff.linter.run": "onSave",
+  "sqltools.connections": [
+    {
+      "driver": "PostgreSQL",
+      "name": "Supabase PostgreSQL",
+      "previewLimit": 50
+    }
+  ],
+  "sqltools.format": {
+    "language": "postgresql",
+    "linesBetweenQueries": 2
+  },
+  "sqltools.useNodeRuntime": true
+}

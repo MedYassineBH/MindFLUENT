@@ -1,110 +1,268 @@
 "use client"
 
-import { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { useProgress } from '@/contexts/ProgressContext'
+import { toast } from 'sonner'
+import { RotateCw, Check, X, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react'
 
 interface Flashcard {
-  id: string;
-  front: string;
-  back: string;
-  example: string;
+  id: string
+  front: string
+  back: string
+  category: string
+  difficulty: 'easy' | 'medium' | 'hard'
+  lastReviewed: string | null
+  mastery: number // 0-100
 }
 
+const sampleFlashcards: Flashcard[] = [
+  {
+    id: '1',
+    front: 'Bonjour',
+    back: 'Hello',
+    category: 'Greetings',
+    difficulty: 'easy',
+    lastReviewed: null,
+    mastery: 0
+  },
+  {
+    id: '2',
+    front: 'Comment ça va?',
+    back: 'How are you?',
+    category: 'Greetings',
+    difficulty: 'easy',
+    lastReviewed: null,
+    mastery: 0
+  },
+  {
+    id: '3',
+    front: 'Je m\'appelle',
+    back: 'My name is',
+    category: 'Introductions',
+    difficulty: 'easy',
+    lastReviewed: null,
+    mastery: 0
+  },
+  {
+    id: '4',
+    front: 'Où est la bibliothèque?',
+    back: 'Where is the library?',
+    category: 'Directions',
+    difficulty: 'medium',
+    lastReviewed: null,
+    mastery: 0
+  },
+  {
+    id: '5',
+    front: 'Je voudrais un café',
+    back: 'I would like a coffee',
+    category: 'Food & Drink',
+    difficulty: 'medium',
+    lastReviewed: null,
+    mastery: 0
+  }
+]
+
+type StudyMode = 'learn' | 'review' | 'test'
+
 export default function FlashcardsPage() {
-  const { user } = useAuth();
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
+  const { t } = useLanguage()
+  const { progress, updateProgress } = useProgress()
+  const [cards, setCards] = useState<Flashcard[]>(sampleFlashcards)
+  const [currentCardIndex, setCurrentCardIndex] = useState(0)
+  const [showBack, setShowBack] = useState(false)
+  const [studyMode, setStudyMode] = useState<StudyMode>('learn')
+  const [score, setScore] = useState(0)
+  const [sessionCompleted, setSessionCompleted] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const flashcards: Flashcard[] = [
-    {
-      id: '1',
-      front: 'Bonjour',
-      back: 'Hello',
-      example: 'Bonjour, comment allez-vous?'
-    },
-    {
-      id: '2',
-      front: 'Merci',
-      back: 'Thank you',
-      example: 'Merci beaucoup pour votre aide!'
-    },
-    {
-      id: '3',
-      front: 'Au revoir',
-      back: 'Goodbye',
-      example: 'Au revoir, à bientôt!'
-    },
-    {
-      id: '4',
-      front: 'Pomme',
-      back: 'Apple',
-      example: 'Je mange une pomme.'
-    },
-    {
-      id: '5',
-      front: 'Livre',
-      back: 'Book',
-      example: 'Ce livre est très intéressant.'
+  useEffect(() => {
+    // Simulate loading delay
+    setTimeout(() => {
+      setIsLoading(false)
+    }, 1000)
+  }, [])
+
+  const currentCard = cards[currentCardIndex]
+
+  const handleFlip = () => {
+    setShowBack(!showBack)
+  }
+
+  const handleResponse = (correct: boolean) => {
+    const updatedCards = [...cards]
+    const card = updatedCards[currentCardIndex]
+    
+    if (correct) {
+      card.mastery = Math.min(100, card.mastery + 20)
+      setScore(prev => prev + 1)
+      toast.success('Correct!')
+    } else {
+      card.mastery = Math.max(0, card.mastery - 10)
+      toast.error('Incorrect!')
     }
-  ];
 
-  const nextCard = () => {
-    setIsFlipped(false);
-    setCurrentCardIndex((prev) => (prev + 1) % flashcards.length);
-  };
+    card.lastReviewed = new Date().toISOString()
+    setCards(updatedCards)
 
-  const prevCard = () => {
-    setIsFlipped(false);
-    setCurrentCardIndex((prev) => (prev - 1 + flashcards.length) % flashcards.length);
-  };
+    if (currentCardIndex < cards.length - 1) {
+      setCurrentCardIndex(prev => prev + 1)
+      setShowBack(false)
+    } else {
+      setSessionCompleted(true)
+      updateProgress('flashcards', {
+        masteredCards: cards.filter(card => card.mastery >= 80).length,
+        lastReviewed: new Date().toISOString()
+      })
+    }
+  }
 
-  if (!user) {
+  const restartSession = () => {
+    setCurrentCardIndex(0)
+    setShowBack(false)
+    setScore(0)
+    setSessionCompleted(false)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[400px]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+          <p className="text-muted-foreground">{t('loading')}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (sessionCompleted) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Practice Flashcards</h1>
-        <p>Please log in to view your flashcards.</p>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('sessionCompleted')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center space-y-4">
+              <h2 className="text-2xl font-bold">
+                {t('yourScore').replace('{score}', score.toString()).replace('{total}', cards.length.toString())}
+              </h2>
+              <p className="text-muted-foreground">
+                {score === cards.length
+                  ? t('perfectScore')
+                  : score >= cards.length / 2
+                  ? t('goodJob')
+                  : t('keepPracticing')}
+              </p>
+              <div className="flex gap-4 justify-center">
+                <Button onClick={restartSession}>
+                  <RotateCw className="w-4 h-4 mr-2" />
+                  {t('tryAgain')}
+                </Button>
+                <Button variant="outline" onClick={() => setStudyMode('review')}>
+                  {t('reviewCards')}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    );
+    )
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h2 className="text-2xl font-bold mb-4">Practice Flashcards</h2>
-      <Card className="flex flex-col items-center justify-center p-8">
-        <div
-          className={`w-full max-w-md aspect-[4/3] relative cursor-pointer transition-transform duration-500 transform-gpu ${
-            isFlipped ? 'rotate-y-180' : ''
-          }`}
-          onClick={() => setIsFlipped(!isFlipped)}
-        >
-          <div className={`absolute w-full h-full backface-hidden ${isFlipped ? 'rotate-y-180' : ''}`}>
-            <div className="bg-primary text-primary-foreground rounded-lg p-6 h-full flex flex-col justify-center items-center text-center">
-              <h3 className="text-2xl font-bold mb-4">{flashcards[currentCardIndex].front}</h3>
-              <p className="text-sm opacity-80">Click to flip</p>
-            </div>
-          </div>
-          <div className={`absolute w-full h-full backface-hidden ${!isFlipped ? 'rotate-y-180' : ''}`}>
-            <div className="bg-muted rounded-lg p-6 h-full flex flex-col justify-center items-center text-center">
-              <h3 className="text-2xl font-bold mb-4">{flashcards[currentCardIndex].back}</h3>
-              <p className="text-sm mb-4">{flashcards[currentCardIndex].example}</p>
-              <p className="text-sm opacity-80">Click to flip back</p>
-            </div>
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold">{t('flashcards')}</h1>
+          <div className="flex gap-2">
+            <Button
+              variant={studyMode === 'learn' ? 'default' : 'outline'}
+              onClick={() => setStudyMode('learn')}
+            >
+              {t('learn')}
+            </Button>
+            <Button
+              variant={studyMode === 'review' ? 'default' : 'outline'}
+              onClick={() => setStudyMode('review')}
+            >
+              {t('review')}
+            </Button>
+            <Button
+              variant={studyMode === 'test' ? 'default' : 'outline'}
+              onClick={() => setStudyMode('test')}
+            >
+              {t('test')}
+            </Button>
           </div>
         </div>
-        <div className="flex justify-between w-full max-w-md mt-8">
-          <Button variant="outline" onClick={prevCard}>
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Previous
-          </Button>
-          <Button variant="outline" onClick={nextCard}>
-            Next
-            <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
+        <Progress
+          value={(currentCardIndex / cards.length) * 100}
+          className="mb-2"
+        />
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>{t('cardProgress').replace('{current}', (currentCardIndex + 1).toString()).replace('{total}', cards.length.toString())}</span>
+          <span>{t('score')}: {score}</span>
         </div>
+      </div>
+
+      <Card className="min-h-[400px] flex items-center justify-center">
+        <CardContent className="pt-6">
+          <div
+            className="text-center cursor-pointer"
+            onClick={handleFlip}
+          >
+            <h2 className="text-2xl font-bold mb-4">
+              {showBack ? currentCard.back : currentCard.front}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t('clickTo')} {showBack ? t('showQuestion') : t('showAnswer')}
+            </p>
+          </div>
+
+          {showBack && studyMode !== 'review' && (
+            <div className="flex justify-center gap-4 mt-8">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => handleResponse(false)}
+              >
+                <X className="w-4 h-4 mr-2" />
+                {t('incorrect')}
+              </Button>
+              <Button
+                size="lg"
+                onClick={() => handleResponse(true)}
+              >
+                <Check className="w-4 h-4 mr-2" />
+                {t('correct')}
+              </Button>
+            </div>
+          )}
+        </CardContent>
       </Card>
+
+      <div className="flex justify-between mt-8">
+        <Button
+          variant="outline"
+          onClick={() => setCurrentCardIndex(prev => Math.max(0, prev - 1))}
+          disabled={currentCardIndex === 0}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          {t('previous')}
+        </Button>
+        <Button
+          onClick={() => setCurrentCardIndex(prev => Math.min(cards.length - 1, prev + 1))}
+          disabled={currentCardIndex === cards.length - 1}
+        >
+          {t('next')}
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+      </div>
     </div>
-  );
+  )
 }

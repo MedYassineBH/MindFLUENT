@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import Link from 'next/link';
 
 export default function Login() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,10 @@ export default function Login() {
       });
 
       if (error) throw error;
-      router.push('/profile');
+      
+      // Get the redirect URL from the search params or default to dashboard
+      const redirectTo = searchParams.get('redirect') || '/dashboard';
+      router.push(redirectTo);
     } catch (err: any) {
       setError(err.message);
     } finally {

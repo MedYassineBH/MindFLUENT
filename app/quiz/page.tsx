@@ -1,134 +1,150 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/contexts/AuthContext'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { useProgress } from '@/contexts/ProgressContext'
+import { toast } from 'sonner'
+import { Check, X, ArrowRight, ArrowLeft } from 'lucide-react'
 
-const quizzes = [
+interface Question {
+  id: string
+  type: 'multiple_choice' | 'true_false' | 'fill_blank' | 'matching'
+  question: string
+  options?: string[]
+  correctAnswer: string | string[]
+  explanation: string
+  difficulty: 'easy' | 'medium' | 'hard'
+}
+
+const sampleQuestions: Question[] = [
   {
-    id: 1,
-    title: 'Vocabulaire de base',
-    description: 'Testez votre connaissance du vocabulaire français',
-    questions: [
-      {
-        id: 1,
-        question: 'Comment dit-on "hello" en français ?',
-        options: ['Bonjour', 'Au revoir', 'Merci', 'S\'il vous plaît'],
-        correctAnswer: 'Bonjour'
-      },
-      {
-        id: 2,
-        question: 'Quel est le contraire de "grand" ?',
-        options: ['Petit', 'Beau', 'Vieux', 'Jeune'],
-        correctAnswer: 'Petit'
-      }
-    ]
+    id: '1',
+    type: 'multiple_choice',
+    question: 'Which of the following is a correct French sentence?',
+    options: [
+      'Je mange une pomme',
+      'Je mange un pomme',
+      'Je mange des pomme',
+      'Je mange le pomme'
+    ],
+    correctAnswer: 'Je mange une pomme',
+    explanation: 'The correct article for feminine singular nouns is "une"',
+    difficulty: 'easy'
   },
   {
-    id: 2,
-    title: 'Grammaire',
-    description: 'Évaluez votre maîtrise de la grammaire française',
-    questions: [
-      {
-        id: 1,
-        question: 'Quelle est la bonne conjugaison de "manger" à la première personne du singulier ?',
-        options: ['Je mange', 'Je manges', 'Je mangent', 'Je mangé'],
-        correctAnswer: 'Je mange'
-      },
-      {
-        id: 2,
-        question: 'Quel article utilise-t-on devant "école" ?',
-        options: ['Le', 'La', 'Les', 'L\''],
-        correctAnswer: 'L\''
-      }
-    ]
+    id: '2',
+    type: 'true_false',
+    question: 'In French, adjectives always come after the noun',
+    correctAnswer: 'false',
+    explanation: 'Some adjectives come before the noun, like "beau", "bon", "grand"',
+    difficulty: 'medium'
+  },
+  {
+    id: '3',
+    type: 'fill_blank',
+    question: 'Complete the sentence: Je ___ (aller) à l\'école demain',
+    correctAnswer: 'vais',
+    explanation: 'The correct conjugation of "aller" in first person singular is "vais"',
+    difficulty: 'hard'
+  },
+  {
+    id: '4',
+    type: 'matching',
+    question: 'Match the French words with their English translations',
+    options: ['Pomme', 'Livre', 'Fleur', 'Maison'],
+    correctAnswer: ['Apple', 'Book', 'Flower', 'House'],
+    explanation: 'Basic vocabulary matching exercise',
+    difficulty: 'easy'
   }
 ]
 
 export default function QuizPage() {
-  const [selectedQuiz, setSelectedQuiz] = useState<number | null>(null)
+  const { t } = useLanguage()
+  const { progress, updateProgress } = useProgress()
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswer, setSelectedAnswer] = useState<string>('')
   const [score, setScore] = useState(0)
-  const [showResults, setShowResults] = useState(false)
-  const { user } = useAuth()
+  const [showExplanation, setShowExplanation] = useState(false)
+  const [selectedAnswer, setSelectedAnswer] = useState<string | string[] | null>(null)
+  const [quizCompleted, setQuizCompleted] = useState(false)
 
-  if (!user) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-4">Quiz</h1>
-        <p>Veuillez vous connecter pour accéder aux quiz.</p>
-      </div>
-    )
-  }
+  const currentQ = sampleQuestions[currentQuestion]
 
-  const handleAnswer = () => {
-    const quiz = quizzes.find(q => q.id === selectedQuiz)
-    if (!quiz) return
+  const handleAnswer = (answer: string | string[]) => {
+    setSelectedAnswer(answer)
+    setShowExplanation(true)
 
-    if (selectedAnswer === quiz.questions[currentQuestion].correctAnswer) {
-      setScore(score + 1)
-    }
-
-    if (currentQuestion < quiz.questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1)
-      setSelectedAnswer('')
+    if (Array.isArray(currentQ.correctAnswer)) {
+      if (Array.isArray(answer) && answer.every((ans, i) => ans === currentQ.correctAnswer[i])) {
+        setScore(prev => prev + 1)
+        toast.success('Correct!')
+      } else {
+        toast.error('Incorrect!')
+      }
     } else {
-      setShowResults(true)
+      if (answer === currentQ.correctAnswer) {
+        setScore(prev => prev + 1)
+        toast.success('Correct!')
+      } else {
+        toast.error('Incorrect!')
+      }
     }
   }
 
-  const resetQuiz = () => {
-    setSelectedQuiz(null)
+  const handleNext = () => {
+    if (currentQuestion < sampleQuestions.length - 1) {
+      setCurrentQuestion(prev => prev + 1)
+      setShowExplanation(false)
+      setSelectedAnswer(null)
+    } else {
+      setQuizCompleted(true)
+      updateProgress('quiz', {
+        completedQuizzes: progress.quiz.completedQuizzes + 1,
+        averageScore: (progress.quiz.averageScore * progress.quiz.completedQuizzes + score) / (progress.quiz.completedQuizzes + 1),
+        lastCompleted: new Date().toISOString()
+      })
+    }
+  }
+
+  const handlePrevious = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(prev => prev - 1)
+      setShowExplanation(false)
+      setSelectedAnswer(null)
+    }
+  }
+
+  const restartQuiz = () => {
     setCurrentQuestion(0)
-    setSelectedAnswer('')
     setScore(0)
-    setShowResults(false)
+    setShowExplanation(false)
+    setSelectedAnswer(null)
+    setQuizCompleted(false)
   }
 
-  if (selectedQuiz === null) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-8">Quiz</h1>
-        <div className="grid gap-6 md:grid-cols-2">
-          {quizzes.map((quiz) => (
-            <Card key={quiz.id} className="cursor-pointer hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle>{quiz.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground mb-4">{quiz.description}</p>
-                <Button onClick={() => setSelectedQuiz(quiz.id)}>
-                  Commencer le quiz
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  const quiz = quizzes.find(q => q.id === selectedQuiz)
-  if (!quiz) return null
-
-  if (showResults) {
+  if (quizCompleted) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>Résultats</CardTitle>
+            <CardTitle>Quiz Completed!</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-lg mb-4">
-              Votre score : {score} sur {quiz.questions.length}
-            </p>
-            <Button onClick={resetQuiz}>
-              Retour aux quiz
-            </Button>
+            <div className="text-center space-y-4">
+              <h2 className="text-2xl font-bold">
+                Your Score: {score}/{sampleQuestions.length}
+              </h2>
+              <p className="text-muted-foreground">
+                {score === sampleQuestions.length
+                  ? 'Perfect! You got all questions right!'
+                  : score >= sampleQuestions.length / 2
+                  ? 'Good job! Keep practicing!'
+                  : 'Keep practicing to improve your score!'}
+              </p>
+              <Button onClick={restartQuiz}>Try Again</Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -137,43 +153,135 @@ export default function QuizPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Button
-        variant="outline"
-        className="mb-6"
-        onClick={resetQuiz}
-      >
-        Retour aux quiz
-      </Button>
+      <div className="mb-8">
+        <Progress
+          value={(currentQuestion / sampleQuestions.length) * 100}
+          className="mb-4"
+        />
+        <div className="flex justify-between text-sm text-muted-foreground">
+          <span>Question {currentQuestion + 1} of {sampleQuestions.length}</span>
+          <span>Score: {score}</span>
+        </div>
+      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Question {currentQuestion + 1} sur {quiz.questions.length}
-          </CardTitle>
+          <CardTitle>{currentQ.question}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-lg mb-6">{quiz.questions[currentQuestion].question}</p>
-          
-          <RadioGroup
-            value={selectedAnswer}
-            onValueChange={setSelectedAnswer}
-            className="space-y-4"
-          >
-            {quiz.questions[currentQuestion].options.map((option) => (
-              <div key={option} className="flex items-center space-x-2">
-                <RadioGroupItem value={option} id={option} />
-                <Label htmlFor={option}>{option}</Label>
+          <div className="space-y-4">
+            {currentQ.type === 'multiple_choice' && (
+              <div className="space-y-2">
+                {currentQ.options?.map((option, index) => (
+                  <Button
+                    key={index}
+                    variant={selectedAnswer === option ? 'default' : 'outline'}
+                    className="w-full justify-start"
+                    onClick={() => !showExplanation && handleAnswer(option)}
+                    disabled={showExplanation}
+                  >
+                    {option}
+                  </Button>
+                ))}
               </div>
-            ))}
-          </RadioGroup>
+            )}
 
-          <Button
-            className="mt-6"
-            onClick={handleAnswer}
-            disabled={!selectedAnswer}
-          >
-            {currentQuestion < quiz.questions.length - 1 ? 'Question suivante' : 'Terminer'}
-          </Button>
+            {currentQ.type === 'true_false' && (
+              <div className="flex gap-4">
+                <Button
+                  variant={selectedAnswer === 'true' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => !showExplanation && handleAnswer('true')}
+                  disabled={showExplanation}
+                >
+                  True
+                </Button>
+                <Button
+                  variant={selectedAnswer === 'false' ? 'default' : 'outline'}
+                  className="flex-1"
+                  onClick={() => !showExplanation && handleAnswer('false')}
+                  disabled={showExplanation}
+                >
+                  False
+                </Button>
+              </div>
+            )}
+
+            {currentQ.type === 'fill_blank' && (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded"
+                  placeholder="Type your answer here"
+                  value={selectedAnswer || ''}
+                  onChange={(e) => !showExplanation && setSelectedAnswer(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !showExplanation) {
+                      handleAnswer(selectedAnswer || '')
+                    }
+                  }}
+                  disabled={showExplanation}
+                />
+                <Button
+                  onClick={() => !showExplanation && handleAnswer(selectedAnswer || '')}
+                  disabled={showExplanation || !selectedAnswer}
+                >
+                  Submit
+                </Button>
+              </div>
+            )}
+
+            {currentQ.type === 'matching' && (
+              <div className="grid grid-cols-2 gap-4">
+                {currentQ.options?.map((option, index) => (
+                  <div key={index} className="space-y-2">
+                    <p className="font-medium">{option}</p>
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded"
+                      placeholder="Match with English"
+                      value={(selectedAnswer as string[])?.[index] || ''}
+                      onChange={(e) => {
+                        const newAnswers = [...((selectedAnswer as string[]) || [])]
+                        newAnswers[index] = e.target.value
+                        setSelectedAnswer(newAnswers)
+                      }}
+                      disabled={showExplanation}
+                    />
+                  </div>
+                ))}
+                <Button
+                  onClick={() => !showExplanation && handleAnswer(selectedAnswer as string[])}
+                  disabled={showExplanation || !selectedAnswer}
+                  className="col-span-2"
+                >
+                  Submit
+                </Button>
+              </div>
+            )}
+
+            {showExplanation && (
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <p className="font-medium">Explanation:</p>
+                <p>{currentQ.explanation}</p>
+              </div>
+            )}
+
+            <div className="flex justify-between mt-6">
+              <Button
+                variant="outline"
+                onClick={handlePrevious}
+                disabled={currentQuestion === 0}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Previous
+              </Button>
+              <Button onClick={handleNext}>
+                {currentQuestion === sampleQuestions.length - 1 ? 'Finish' : 'Next'}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
